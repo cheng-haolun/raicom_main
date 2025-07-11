@@ -1,0 +1,4 @@
+confidence:0.9
+image_size:640
+target_size:50
+model_path:./runs/detect/cj2/weights/best.pt
