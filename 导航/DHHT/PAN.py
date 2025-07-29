@@ -9,8 +9,10 @@ from std_srvs.srv  import    *
 from actionlib import SimpleActionClient
 from re import sub
 import keyboard
+import subprocess
 
 client=None
+goal_potions=['positon*','','','']
 
 def init():
     global client
@@ -18,6 +20,14 @@ def init():
     rospy.loginfo("等待move_base动作服务器...")
     client.wait_for_server()
     rospy.loginfo("已连接到move_base动作服务器")
+
+def stop_to_read():
+    cmd = ("""
+    cd ultralytics-main
+    conda activate yolov8
+    python3 BRv2.0.py
+    """)
+    subprocess.call(['bash','-c',cmd])
 
 def data_init(path):
     try:
@@ -53,7 +63,6 @@ def navigate_to_point(x, y, z, w):
         goal.target_pose.pose.orientation.w = w
         client.send_goal(goal)
         rospy.loginfo("导航到目标: x=%.2f, y=%.2f, z=%.2f, w=%.2f" % (x, y, z, w))
-        rospy.loginfo("导航成功")
         result = client.wait_for_result()
         if result:
             rospy.loginfo("导航完成！")
@@ -73,6 +82,8 @@ def main():
     init()
     our_goals,key_list=data_init(data_path)
     for group_name in key_list:
+        if group_name in goal_potions:
+            stop_to_read()
         if keyborad.is_pressed('q'):
             ros.loginfo("紧急中断程序！")
             ros.loginfo("中断的点为：%s" % sub(r'\*',' ',group_name))

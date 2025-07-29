@@ -31,12 +31,3 @@ def write_new_data(new_data,save_path):
 def data_init(data_path):
     with open(data_path,'w') as file:
         file.write(' ')
-
-if __name__ == '__main__':
-    data_path='./data.old'
-    save_path='./data.new'
-    data_init(save_path)
-    points=old_to_new(data_path)
-    write_new_data(points,save_path)
-    for point in points:
-        print(point,points[point])
