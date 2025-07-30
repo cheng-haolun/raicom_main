@@ -1,4 +1,3 @@
-#作者：程浩伦  学校：南京晓庄学院  项目：导航点可视化管理程序 VISION:V4.2
 #时间：2025年6月26日 21:09:33
 #更新日志：此版本与导航模块一起，修改停止标志符号为‘!’,‘#’改为跳过标志符号,添加了紧急中断按钮‘q’。
 import tkinter as tk
@@ -8,10 +7,9 @@ from re import sub
 import more_ability as tz
 import subprocess
 
-data_path1='/home/mowen/DHHTV4.2/datadh.txt'
-data_path2='/home/mowen/DHHTV4.2/data.txt'
-save_path='/home/mowen/DHHTV4.2/save.txt'
-dh__path='/home/mowen/DHHTV4.2/PAN.py'
+data_path1='/home/mowen/DHHT/datadh.txt'
+data_path2='/home/mowen/DHHT/data.txt'
+save_path='/home/mowen/DHHT/save.txt'
 
 def data_change(value):
     value_list=[]

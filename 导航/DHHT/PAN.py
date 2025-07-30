@@ -12,7 +12,7 @@ import keyboard
 import subprocess
 
 client=None
-goal_potions=['positon*','','','']
+goal_potions=['positon*4','position*','position*','position*']
 
 def init():
     global client
@@ -22,12 +22,15 @@ def init():
     rospy.loginfo("已连接到move_base动作服务器")
 
 def stop_to_read():
-    cmd = ("""
-    cd ultralytics-main
-    conda activate yolov8
-    python3 BRv2.0.py
-    """)
-    subprocess.call(['bash','-c',cmd])
+    try:
+        cmd = ("""
+        cd ultralytics-main && \\
+        conda activate yolov8 && \\
+        python3 BR.py
+        """)
+        subprocess.Popen(['bash','-c',cmd])
+    except Exception,e:
+        print('NO get',e)
 
 def data_init(path):
     try:
