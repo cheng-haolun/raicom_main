@@ -8,7 +8,8 @@ from re import sub
 import subprocess
 
 client=None
-goal_potions=['position*5','position*7','position*24','position*26']
+goal_potions_BR=['position*5','position*7','position*24','position*26']
+goal_potions_DB=['position*','position*','position*','position*']
 
 def init():
     global client
@@ -16,6 +17,14 @@ def init():
     rospy.loginfo("等待move_base动作服务器...")
     client.wait_for_server()
     rospy.loginfo("已连接到move_base动作服务器")
+
+def fire(position_name):
+        cmd = (
+        'source /home/mowen/miniconda3/etc/profile.d/conda.sh && '
+        'conda activate yolov8 && '
+        'python3 /home/mowen/ultralytics-main/mbzz.py {0}'.format(position_name)
+        )
+        subprocess.Popen(['bash', '-l', '-c',cmd]).wait()
 
 def stop_to_read(position_name):
         cmd = (
@@ -71,8 +80,10 @@ def main():
     init()
     our_goals,key_list=data_init(data_path)
     for group_name in key_list:
-        if group_name in goal_potions:
+        if group_name in goal_potions_BR:
             stop_to_read(group_name)
+        elif group_name in goal_potions_DB:
+            fire(group_name)
         goals=our_goals[group_name]
         rospy.loginfo("处理组: %s" % sub(r'\*',' ',group_name))
         for goal in goals:
