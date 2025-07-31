@@ -1,18 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 import rospy
-import tf
-import actionlib
-from geometry_msgs.msg import PoseStamped
-from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal,MoveBaseActionResult,MoveBaseActionGoal
+from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 from std_srvs.srv  import    *
 from actionlib import SimpleActionClient
 from re import sub
-import keyboard
 import subprocess
 
 client=None
-goal_potions=['positon*4','position*','position*','position*']
+goal_potions=['position*5','position*7','position*24','position*26']
 
 def init():
     global client
@@ -21,16 +17,13 @@ def init():
     client.wait_for_server()
     rospy.loginfo("已连接到move_base动作服务器")
 
-def stop_to_read():
-    try:
-        cmd = ("""
-        cd ultralytics-main && \\
-        conda activate yolov8 && \\
-        python3 BR.py
-        """)
-        subprocess.Popen(['bash','-c',cmd])
-    except Exception,e:
-        print('NO get',e)
+def stop_to_read(position_name):
+        cmd = (
+        'source /home/mowen/miniconda3/etc/profile.d/conda.sh && '
+        'conda activate yolov8 && '
+        'python3 /home/mowen/ultralytics-main/BR.py {0}'.format(position_name)
+        )
+        subprocess.Popen(['bash', '-l', '-c',cmd]).wait()
 
 def data_init(path):
     try:
@@ -50,47 +43,36 @@ def data_init(path):
                     goals[key]=group_goals
                     key_list.append(key)
         return goals,key_list
-    except Exception as e:
+    except Exception , e:
         rospy.logerr("读取目标点文件失败: %s" % e)
         return {}, []
 
 def navigate_to_point(x, y, z, w):
     global client
-    try:
-        goal = MoveBaseGoal()
-        goal.target_pose.header.frame_id = "map"
-        goal.target_pose.header.stamp = rospy.Time.now()
-        goal.target_pose.pose.position.x = x
-        goal.target_pose.pose.position.y = y
-        goal.target_pose.pose.orientation.z = z
-        goal.target_pose.pose.orientation.w = w
-        client.send_goal(goal)
-        rospy.loginfo("导航到目标: x=%.2f, y=%.2f, z=%.2f, w=%.2f" % (x, y, z, w))
-        result = client.wait_for_result()
-        if result:
-            rospy.loginfo("导航完成！")
-        else:
-            rospy.logerr("导航失败！")
-        return result
-    except Exception,e:
-        rospy.logerr("导航失败: %s" % e)
-        return None
-    except rospy.ROSException,e:
-        rospy.logerr("ros错误: %s" % e)
-        return None
+    goal = MoveBaseGoal()
+    goal.target_pose.header.frame_id = "map"
+    goal.target_pose.header.stamp = rospy.Time.now()
+    goal.target_pose.pose.position.x = x
+    goal.target_pose.pose.position.y = y
+    goal.target_pose.pose.orientation.z = z
+    goal.target_pose.pose.orientation.w = w
+    client.send_goal(goal)
+    rospy.loginfo("导航到目标: x=%.2f, y=%.2f, z=%.2f, w=%.2f" % (x, y, z, w))
+    result = client.wait_for_result()
+    if result:
+        rospy.loginfo("导航完成！")
+    else:
+        rospy.logerr("导航失败！")
+    return result
 
 def main():
-    data_path='/home/mowen/DHHTV4.2/datadh.txt'
+    data_path='/home/mowen/DHHT/datadh.txt'
     rospy.init_node('move_base_node')
     init()
     our_goals,key_list=data_init(data_path)
     for group_name in key_list:
         if group_name in goal_potions:
-            stop_to_read()
-        if keyborad.is_pressed('q'):
-            ros.loginfo("紧急中断程序！")
-            ros.loginfo("中断的点为：%s" % sub(r'\*',' ',group_name))
-            break
+            stop_to_read(group_name)
         goals=our_goals[group_name]
         rospy.loginfo("处理组: %s" % sub(r'\*',' ',group_name))
         for goal in goals:
