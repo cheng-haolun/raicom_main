@@ -31,6 +31,8 @@ confident = float(config['confidence'])#置信度
 target_size = int(config['target_size'])#准心大小
 image_size = int(config['image_size'])#识别尺寸
 model_path = config['model_path']#模型路径
+x_improve = 2#X轴瞄准补偿
+y_improve = 2#Y轴瞄准补偿
 angle_init = 0X5A#初始化角度
 x_servo = 0X01#水平方向舵机编号
 y_servo = 0X02#垂直方向舵机编号
@@ -41,6 +43,7 @@ fire = 0X01#开火状态
 close = 0X00#关闭状态
 ser = serial_init()#初始化串口
 position_name = sys.argv[1]#点位信息
+STATION = 0#开火状态
 
 def position_get():
     global angle_init
@@ -62,33 +65,39 @@ def servo_init():
 #舵机瞄准及射击模块
 def servo_move_and_fire(result_x,result_y,target_min,target_max):
     #水平舵机
-    if result_x < target_min:
+    global STATION,x_angel_sign,y_angel_sign
+    if result_x < target_min+x_improve:
+        x_new_angel=x_angel_sign+2
         print("LEFT")
-        ser.write(bytearray([0xAA, 0xBB, x_servo, x_angel_sign+2, 0x0D, 0x0A]))
+        ser.write(bytearray([0xAA, 0xBB, x_servo,x_new_angel, 0x0D, 0x0A]))
         time.sleep(0.1)
-    elif result_x > target_max:
+    elif result_x > target_max+x_improve:
+        x_new_angel = x_angel_sign - 2
         print("RIGHT")
-        ser.write(bytearray([0xAA, 0xBB, x_servo, x_angel_sign-2, 0x0D, 0x0A]))
+        ser.write(bytearray([0xAA, 0xBB, x_servo, x_new_angel, 0x0D, 0x0A]))
         time.sleep(0.1)
     #垂直舵机
-    if result_y < target_min:
+    if result_y < target_min+y_improve:
+        y_new_angel=y_angel_sign + 2
         print("UP")
-        ser.write(bytearray([0xAA, 0xBB, y_servo, y_angel_sign+2, 0x0D, 0x0A]))
+        ser.write(bytearray([0xAA, 0xBB, y_servo, y_new_angel, 0x0D, 0x0A]))
         time.sleep(0.1)
-    elif result_y > target_max:
+    elif result_y > target_max+y_improve:
+        y_new_angel = y_angel_sign - 2
         print("DOWN")
-        ser.write(bytearray([0xAA, 0xBB, y_servo, y_angel_sign-2, 0x0D, 0x0A]))
+        ser.write(bytearray([0xAA, 0xBB, y_servo, y_new_angel, 0x0D, 0x0A]))
         time.sleep(0.1)
     #开火
-    if target_min <= result_x <=target_max and target_min <= result_y <= target_max:
+    if target_min+x_improve <= result_x <=target_max+x_improve and target_min+y_improve <= result_y <= target_max+y_improve:
         print("GOOOOOOOOOAL!!!")
         ser.write(bytearray([0xAA, 0xBB, fire_servo, fire, 0x0D, 0x0A]))
         time.sleep(2)
         ser.write(bytearray([0xAA, 0xBB, fire_servo, close, 0x0D, 0x0A]))
+        STATION=1
 
 #结果绘制及判定模块
 def show_result(frame,results):
-    global ser
+    global ser,x_improve,y_improve
     target_min,target_max=int((image_size/2)-(target_size/2)),int((image_size/2)+(target_size/2))#准心坐标信息
     for result in results:
         boxs = result.boxes
@@ -100,7 +109,7 @@ def show_result(frame,results):
             servo_move_and_fire(resultx,resulty,target_min,target_max)#瞄准并开火
             cv2.rectangle(frame,(resultx, resulty),(resultx+1,resulty+1),(225,0,0),2)#绘制识别结果中心点
             cv2.rectangle(frame,(x1, y1), (x2, y2), (0, 255, 0), 2)#绘制识别框
-    cv2.rectangle(frame, (target_min, target_min), (target_max, target_max), (225, 225, 0), 2)#绘制准心
+    cv2.rectangle(frame, (target_min+x_improve, target_min+y_improve), (target_max+x_improve, target_max+y_improve), (225, 225, 0), 2)#绘制准心
     return frame
 
 #模型及摄像头初始化模块
@@ -129,6 +138,9 @@ def main():
                                 imgsz=image_size)#识别结果
         frame=show_result(frame,results)#绘制结果并判定
         cv2.imshow('zhen',frame)#输出结果
+        time.sleep(0.5)
+        if STATION == 1 and results is None:
+            break
         #遇到‘q’时停止
         if cv2.waitKey(1) & 0xFF == ord('q'):
             cap.release()
