@@ -14,6 +14,7 @@ def serial_init():
         stopbits=serial.STOPBITS_ONE,  # 停止位
         timeout=1  # 超时时间
     )
+    print('serial_init success')
     return serial_s
 
 #读入置信度等参数
@@ -22,7 +23,7 @@ def data_config():
     with open('mbzz_HT/data.txt', encoding='UTF-8') as data_file:
         for line in data_file:
             key,value = line.strip().split(':', 1)
-            config[key] = value
+            config_0[key] = value
     return config_0
 
 #初始化变量
@@ -31,8 +32,8 @@ confident = float(config['confidence'])#置信度
 target_size = int(config['target_size'])#准心大小
 image_size = int(config['image_size'])#识别尺寸
 model_path = config['model_path']#模型路径
-x_improve = 2#X轴瞄准补偿
-y_improve = 2#Y轴瞄准补偿
+x_improve = 8#X轴瞄准补偿
+y_improve = 0#Y轴瞄准补偿
 angle_init = 0X5A#初始化角度
 x_servo = 0X01#水平方向舵机编号
 y_servo = 0X02#垂直方向舵机编号
@@ -61,37 +62,42 @@ def servo_init():
     ser.write(bytearray([0xAA, 0xBB, x_servo, angle_init, 0x0D, 0x0A]))#初始化水平舵机
     ser.write(bytearray([0xAA, 0xBB, y_servo, angle_init, 0x0D, 0x0A]))#初始化垂直舵机
     ser.write(bytearray([0xAA, 0xBB, fire_servo, close, 0x0D, 0x0A]))#初始化射击舵机
+    print("servo init success")
 
 #舵机瞄准及射击模块
 def servo_move_and_fire(result_x,result_y,target_min,target_max):
     #水平舵机
-    global STATION,x_angel_sign,y_angel_sign
+    global STATION
+    global x_angel_sign
+    global y_angel_sign
     if result_x < target_min+x_improve:
-        x_new_angel=x_angel_sign+2
+        x_angel_sign+=1
         print("LEFT")
-        ser.write(bytearray([0xAA, 0xBB, x_servo,x_new_angel, 0x0D, 0x0A]))
+        ser.write(bytearray([0xAA, 0xBB, x_servo,x_angel_sign, 0x0D, 0x0A]))
         time.sleep(0.1)
     elif result_x > target_max+x_improve:
-        x_new_angel = x_angel_sign - 2
+        x_angel_sign-=1
         print("RIGHT")
-        ser.write(bytearray([0xAA, 0xBB, x_servo, x_new_angel, 0x0D, 0x0A]))
+        ser.write(bytearray([0xAA, 0xBB, x_servo, x_angel_sign, 0x0D, 0x0A]))
         time.sleep(0.1)
-    #垂直舵机
-    if result_y < target_min+y_improve:
-        y_new_angel=y_angel_sign + 2
-        print("UP")
-        ser.write(bytearray([0xAA, 0xBB, y_servo, y_new_angel, 0x0D, 0x0A]))
-        time.sleep(0.1)
-    elif result_y > target_max+y_improve:
-        y_new_angel = y_angel_sign - 2
-        print("DOWN")
-        ser.write(bytearray([0xAA, 0xBB, y_servo, y_new_angel, 0x0D, 0x0A]))
-        time.sleep(0.1)
+    else:
+        #垂直舵机
+        if result_y < target_min+y_improve:
+            y_angel_sign+=1
+            print("UP")
+            ser.write(bytearray([0xAA, 0xBB, y_servo, y_angel_sign, 0x0D, 0x0A]))
+            time.sleep(0.1)
+        elif result_y > target_max+y_improve:
+            y_angel_sign-=1
+            print("DOWN")
+            ser.write(bytearray([0xAA, 0xBB, y_servo, y_angel_sign, 0x0D, 0x0A]))
+            time.sleep(0.1)
     #开火
     if target_min+x_improve <= result_x <=target_max+x_improve and target_min+y_improve <= result_y <= target_max+y_improve:
         print("GOOOOOOOOOAL!!!")
+        time.sleep(1)
         ser.write(bytearray([0xAA, 0xBB, fire_servo, fire, 0x0D, 0x0A]))
-        time.sleep(2)
+        time.sleep(1)
         ser.write(bytearray([0xAA, 0xBB, fire_servo, close, 0x0D, 0x0A]))
         STATION=1
 
@@ -124,6 +130,7 @@ def init():
     return cap, model
 
 def main():
+    global STATION
     if not ser.is_open:
         ser.open()
         print("串口打开成功")#打开串口
@@ -137,14 +144,13 @@ def main():
                                 stream=True,verbose=False,
                                 imgsz=image_size)#识别结果
         frame=show_result(frame,results)#绘制结果并判定
-        cv2.imshow('zhen',frame)#输出结果
+        cv2.imshow('1',frame)
         time.sleep(0.5)
-        if STATION == 1 and results is None:
+        if STATION == 1:
             break
         #遇到‘q’时停止
         if cv2.waitKey(1) & 0xFF == ord('q'):
             cap.release()
-            cv2.destroyAllWindows()
             break
 
 if __name__ == '__main__':
