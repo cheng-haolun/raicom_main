@@ -8,8 +8,8 @@ from re import sub
 import subprocess
 
 client=None
-goal_potions_BR=['position*5','position*7','position*24','position*26']
-goal_potions_DB=['position*','position*','position*','position*']
+goal_potions_BR=[0]#['position*5','position*7','position*24','position*26']
+goal_potions_DB=[0]#['position*5','position*9','position*18','position*24']
 
 def init():
     global client
@@ -80,10 +80,14 @@ def main():
     init()
     our_goals,key_list=data_init(data_path)
     for group_name in key_list:
-        if group_name in goal_potions_BR:
+        if group_name in goal_potions_BR and group_name in goal_potions_DB:
             stop_to_read(group_name)
-        elif group_name in goal_potions_DB:
             fire(group_name)
+        else:
+            if group_name in goal_potions_BR:
+                stop_to_read(group_name)
+            elif group_name in goal_potions_DB:
+                fire(group_name)
         goals=our_goals[group_name]
         rospy.loginfo("处理组: %s" % sub(r'\*',' ',group_name))
         for goal in goals:

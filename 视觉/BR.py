@@ -4,22 +4,12 @@ import os
 import sys
 from ultralytics import YOLO
 
-#读取文件信息
-def data_config():
-    config={}
-    with open('/home/mowen/ultralytics-main/BR_HT/data.txt') as data_file:
-        for line in data_file:
-            key,value = line.strip().split(':', 1)
-            config[key] = value
-    return config
-
 def data_init():
-    config = data_config()
     # 定义区
-    confident = config['confidence']# 置信度
-    num=config['num']# 图片编号
-    model_path = config['model_path']  # 模型路径
-    save_images = config['save_images']  # 原图保存路径
+    confident = 0.85 #置信度
+    num=1 #图片编号
+    model_path ="/home/mowen/ultralytics-main/BRV11_improve_last/weights/best.pt"  # 模型路径
+    save_images = "./BR_look" # 原图保存路径
     return float(confident),int(num),model_path,save_images
 
 def main():
