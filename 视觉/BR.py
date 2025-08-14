@@ -4,6 +4,8 @@ import os
 import sys
 from ultralytics import YOLO
 
+position_id='0'
+
 def data_init():
     # 定义区
     confident = 0.85 #置信度
@@ -13,9 +15,18 @@ def data_init():
     return float(confident),int(num),model_path,save_images
 
 def main():
+    global position_id
     confident,num,model_path,save_images=data_init()
     result_id=0
     position=sys.argv[1]
+    if position == 'position*5':
+        position_id='D'
+    elif position == 'position*10':
+        position_id='C'
+    elif position == 'position*20':
+        position_id='B'
+    elif position == 'position*30':
+        position_id='A'
     #加载模型
     model = YOLO(f'{model_path}')
     # 图片保存路径的判断，有则跳过，无则创建
@@ -28,6 +39,9 @@ def main():
     while True:
         ret, frame = cap.read()
         cv2.imshow("Camera", frame)
+        count_rz=0
+        count_yj=0
+        count_dr=0
         results = model.predict(source=frame, conf=confident,
                   stream=False)  # 识别图片
         box=results[0].boxes
@@ -37,8 +51,20 @@ def main():
             if result_id <= 2:
                 results[0].show()
                 results[0].save(f'{save_images}/{position}/{num}.jpg')
+                for cls in results[0].boxes.cls:
+                    if cls == 0:
+                        count_rz += 1
+                    elif cls == 1:
+                        count_yj += 1
+                    elif cls == 2:
+                        count_dr += 1
+                    elif cls == 3:
+                        count_dr += 1
+                im_path = f'{real_save_path}/{position}/{num}.jpg'
+                img = cv2.imread(im_path)
+                cv2.putText(img,f'区域:{position_id}\n人质：{count_rz}友军：{count_yj}敌人：{count_dr}',
+                            (0,0),cv2.FONT_HERSHEY_SIMPLEX,1,(255,0,0),2)
                 num+=1
-            else:
                 break
         else:
             print('未检测到目标')
