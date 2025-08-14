@@ -19,14 +19,16 @@ def serial_init():
 
 #初始化变量
 confident = 0.5#置信度
-image_size = 640#识别尺寸
-model_path = "/home/mowen/ultralytics-main/goal_modelNO.1/weights/best.pt"#模型路径
+image_size_x = 640#识别尺寸
+image_size_y = 480
+model_path = "/home/mowen/ultralytics-main/goal_modelNO.2/weights/best.pt"#模型路径
 x_wide=0
 y_wide=0
 x_improve=0
 y_improve=0
 angel_improve_x=0
 angel_improve_y=0
+fz=0
 angle_init = 0#初始化角度
 x_servo = 0X01#水平方向舵机编号
 y_servo = 0X02#垂直方向舵机编号
@@ -38,32 +40,34 @@ position_name = sys.argv[1]#点位信息
 STATION = 0#开火状态
 
 def position_get():
-    global x_wide,y_wide,x_improve,y_improve,angel_improve_x,angel_improve_y,angle_init,x_angel_sign
+    global x_wide,y_wide,x_improve,y_improve,angel_improve_x,angel_improve_y,angle_init,x_angel_sign,fz
     if position_name == 'position*5':
-        x_wide=15
+        x_wide=10
         y_wide=30
-        x_improve=2
+        x_improve=1
         y_improve=1
-        angel_improve_x=1
-        angel_improve_y=-1
+        angel_improve_x=6
+        angel_improve_y=-2
         angle_init=0X50
+        fz=0
         x_angel_sign = angle_init#水平角度状态
-    elif position_name == 'position*9':
-        x_wide=20
-        y_wide=30
-        x_improve=-1
+    elif position_name == 'position*11':
+        x_wide=15
+        y_wide=40
+        x_improve=1
         y_improve=-1
         angel_improve_x=2
         angel_improve_y=-1
-        angle_init= 0X69
+        angle_init= 0X60
+        fz=30
         x_angel_sign = angle_init#水平角度状态
     elif position_name == 'position*18':
         x_wide=15
         y_wide=30
         x_improve=0
         y_improve=0
-        angel_improve_x=3
-        angel_improve_y=-1
+        angel_improve_x=0
+        angel_improve_y=1
         angle_init = 0XA0
         x_angel_sign = angle_init#水平角度状态
     elif position_name == 'position*24':
@@ -89,47 +93,55 @@ def servo_move_and_fire(result_point_x,result_point_y,target_x,target_y):
     #水平舵机
     global STATION
     global x_angel_sign
-    global y_angel_sign,x_wide,y_wide
+    global y_angel_sign,x_wide,y_wide,x_improve,y_improve,fz,angel_improve_x,angel_improve_y
     x_control_min= target_x+x_improve - result_point_x+x_wide
     x_control_max= target_x+x_improve - result_point_x-x_wide
     y_control_min= target_y+y_improve - result_point_y+y_wide
     y_control_max= target_y+y_improve - result_point_y-y_wide
-    if 0 < x_control_min <10:
+    if fz < x_control_min <25:
         x_angel_sign+=1
-        print("LEFT")
+        print("litlle LEFT")
         ser.write(bytearray([0xAA, 0xBB, x_servo,x_angel_sign, 0x0D, 0x0A]))
-    elif x_control_min > 10:
+        time.sleep(0.5)
+    elif x_control_min > 25:
         x_angel_sign+=2
-        print("LEFT")
+        print("large LEFT")
         ser.write(bytearray([0xAA, 0xBB, x_servo,x_angel_sign, 0x0D, 0x0A]))
-    elif -10 < x_control_max< 0:
+        time.sleep(0.5)
+    elif -25 < x_control_max< -fz:
         x_angel_sign-=1
-        print("RIGHT")
+        print("little RIGHT")
         ser.write(bytearray([0xAA, 0xBB, x_servo, x_angel_sign, 0x0D, 0x0A]))
-    elif x_control_max < -10:
+        time.sleep(0.5)
+    elif x_control_max < -25:
         x_angel_sign -= 2
-        print("RIGHT")
+        print("large RIGHT")
         ser.write(bytearray([0xAA, 0xBB, x_servo, x_angel_sign, 0x0D, 0x0A]))
+        time.sleep(0.5)
     else:
         #垂直舵机
         if y_control_min>0:
             y_angel_sign+=1
             print("UP")
             ser.write(bytearray([0xAA, 0xBB, y_servo, y_angel_sign, 0x0D, 0x0A]))
+            time.sleep(0.5)
         elif 0<y_control_min<10:
             y_angel_sign+=2
             print("UP")
             ser.write(bytearray([0xAA, 0xBB, y_servo, y_angel_sign, 0x0D, 0x0A]))
+            time.sleep(0.5)
         elif -10 < y_control_max < 0:
             y_angel_sign-=1
             print("DOWN")
             ser.write(bytearray([0xAA, 0xBB, y_servo, y_angel_sign, 0x0D, 0x0A]))
+            time.sleep(0.5)
         elif y_control_max < -10:
             y_angel_sign -= 2
             print("DOWN")
             ser.write(bytearray([0xAA, 0xBB, y_servo, y_angel_sign, 0x0D, 0x0A]))
+            time.sleep(0.5)
     #开火
-    if  result_point_x-x_wide<= target_x+x_improve <= result_point_x+x_wide and result_point_y-y_wide<= target_y+y_improve <= result_point_y+y_wide:
+    if  result_point_x-x_wide-fz<= target_x+x_improve <= result_point_x+x_wide + fz and result_point_y-y_wide<= target_y+y_improve <= result_point_y+y_wide:
         print("GOOOOOOOOOAL!!!")
         ser.write(bytearray([0xAA, 0xBB, x_servo, x_angel_sign+angel_improve_x,0x0D, 0x0A]))
         time.sleep(0.5)
@@ -148,7 +160,7 @@ def servo_move_and_fire(result_point_x,result_point_y,target_x,target_y):
 #结果绘制及判定模块
 def show_result(frame,results):
     global ser,x_improve,y_improve
-    target_x,target_y=int(image_size/2),int(image_size/2)#准心坐标信息
+    target_x,target_y=int(image_size_x/2),int(image_size_y/2)#准心坐标信息
     for result in results:
         boxs = result.boxes
         for box in boxs:
@@ -180,10 +192,10 @@ def main():
     servo_init()#初始化舵机
     while True:
         camera,frame=cap.read()#读取摄像头图像
-        frame = cv2.resize(frame, (image_size, image_size))
+        frame = cv2.resize(frame, (image_size_x, image_size_y))
         results = model.predict(source=frame, conf=confident,
                                 stream=True,verbose=True,
-                                imgsz=image_size)#识别结果
+                                imgsz=[image_size_x,image_size_y])#识别结果
         frame=show_result(frame,results)#绘制结果并判定
         if STATION == 1:
             break
