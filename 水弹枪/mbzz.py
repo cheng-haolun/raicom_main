@@ -90,22 +90,42 @@ def servo_move_and_fire(result_point_x,result_point_y,target_x,target_y):
     global STATION
     global x_angel_sign
     global y_angel_sign,x_wide,y_wide
-    if target_x+x_improve > result_point_x+x_wide:
+    x_control_min= target_x+x_improve - result_point_x+x_wide
+    x_control_max= target_x+x_improve - result_point_x-x_wide
+    y_control_min= target_y+y_improve - result_point_y+y_wide
+    y_control_max= target_y+y_improve - result_point_y-y_wide
+    if 0 < x_control_min <10:
         x_angel_sign+=1
         print("LEFT")
         ser.write(bytearray([0xAA, 0xBB, x_servo,x_angel_sign, 0x0D, 0x0A]))
-    elif target_x+x_improve < result_point_x-x_wide:
+    elif x_control_min > 10:
+        x_angel_sign+=2
+        print("LEFT")
+        ser.write(bytearray([0xAA, 0xBB, x_servo,x_angel_sign, 0x0D, 0x0A]))
+    elif -10 < x_control_max< 0:
         x_angel_sign-=1
+        print("RIGHT")
+        ser.write(bytearray([0xAA, 0xBB, x_servo, x_angel_sign, 0x0D, 0x0A]))
+    elif x_control_max < -10:
+        x_angel_sign -= 2
         print("RIGHT")
         ser.write(bytearray([0xAA, 0xBB, x_servo, x_angel_sign, 0x0D, 0x0A]))
     else:
         #垂直舵机
-        if target_y+y_improve > result_point_y+y_wide:
+        if y_control_min>0:
             y_angel_sign+=1
             print("UP")
             ser.write(bytearray([0xAA, 0xBB, y_servo, y_angel_sign, 0x0D, 0x0A]))
-        elif target_y+y_improve < result_point_y-y_wide:
+        elif 0<y_control_min<10:
+            y_angel_sign+=2
+            print("UP")
+            ser.write(bytearray([0xAA, 0xBB, y_servo, y_angel_sign, 0x0D, 0x0A]))
+        elif -10 < y_control_max < 0:
             y_angel_sign-=1
+            print("DOWN")
+            ser.write(bytearray([0xAA, 0xBB, y_servo, y_angel_sign, 0x0D, 0x0A]))
+        elif y_control_max < -10:
+            y_angel_sign -= 2
             print("DOWN")
             ser.write(bytearray([0xAA, 0xBB, y_servo, y_angel_sign, 0x0D, 0x0A]))
     #开火
