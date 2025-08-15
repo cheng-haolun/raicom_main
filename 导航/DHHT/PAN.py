@@ -3,20 +3,26 @@
 import rospy
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 from std_srvs.srv  import    *
+from dynamic_reconfigure.client import Client
 from actionlib import SimpleActionClient
 from re import sub
 import subprocess
 
 client=None
-goal_potions_BR=[0]#['position*5','position*7','position*24','position*26']
-goal_potions_DB=[0]#['position*5','position*9','position*18','position*24']
+dc_client=None
+dc_client_dwa=None
+goal_potions_BR=['position*5','position*7','position*22','position*24']
+goal_potions_DB=['position*5','position*9','position*16','position*22']
 
 def init():
-    global client
+    global client,dc_client,dc_client_dwa
     client = SimpleActionClient('move_base', MoveBaseAction)
     rospy.loginfo("等待move_base动作服务器...")
     client.wait_for_server()
     rospy.loginfo("已连接到move_base动作服务器")
+    dc_client = Client('/move_base/local_costmap/inflation_layer')
+    rospy.loginfo("已连接到 inflation_layer 动态参数")
+    dc_client_dwa = Client('/move_base/DWAPlannerROS')
 
 def fire(position_name):
         cmd = (
@@ -75,6 +81,7 @@ def navigate_to_point(x, y, z, w):
     return result
 
 def main():
+    global dc_client,client,dc_client_dwa
     data_path='/home/mowen/DHHT/datadh.txt'
     rospy.init_node('move_base_node')
     init()
@@ -88,6 +95,17 @@ def main():
                 stop_to_read(group_name)
             elif group_name in goal_potions_DB:
                 fire(group_name)
+        if group_name=="position*2":
+            dc_client.update_configuration({'inflation_radius': 0.10})
+            rospy.loginfo("局部膨胀半径已调整到 0.10 m")
+            dc_client_dwa.update_configuration({'max_vel_x': 0.15,'max_vel_theta': 0.3})
+        elif group_name == "position*3":
+            dc_client.update_configuration({'inflation_radius': 0.03})
+            rospy.loginfo("局部膨胀半径已调整到 0.03 m")
+        elif group_name == "position*4":
+            dc_client_dwa.update_configuration({'max_vel_x': 0.4,'max_vel_theta': 1.2,
+                                                'occdist_scale':10,'stop_time_buffer':0.25})
+
         goals=our_goals[group_name]
         rospy.loginfo("处理组: %s" % sub(r'\*',' ',group_name))
         for goal in goals:

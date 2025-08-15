@@ -3,7 +3,7 @@ import time
 import cv2
 import serial
 from ultralytics import YOLO
-
+import numpy as np
 #串口初始化
 def serial_init():
     serial_s = serial.Serial(
@@ -17,8 +17,14 @@ def serial_init():
     print('serial_init success')
     return serial_s
 
+def return_back():
+    ser.write(bytearray([0xAA, 0xBB, x_servo,0x5A,0x0D,0x0A]))
+    time.sleep(1)
+    ser.write(bytearray([0xAA, 0xBB, y_servo,0x5A,0x0D,0x0A]))
+    time.sleep(1)
+
 #初始化变量
-confident = 0.5#置信度
+confident = 0.7#置信度
 image_size_x = 640#识别尺寸
 image_size_y = 480
 model_path = "/home/mowen/ultralytics-main/goal_modelNO.2/weights/best.pt"#模型路径
@@ -37,6 +43,7 @@ fire = 0X01#开火状态
 close = 0X00#关闭状态
 ser = serial_init()#初始化串口
 position_name = sys.argv[1]#点位信息
+count=0
 STATION = 0#开火状态
 
 def position_get():
@@ -46,38 +53,40 @@ def position_get():
         y_wide=30
         x_improve=1
         y_improve=1
-        angel_improve_x=6
+        angel_improve_x=8
         angel_improve_y=-2
         angle_init=0X50
         fz=0
         x_angel_sign = angle_init#水平角度状态
-    elif position_name == 'position*11':
-        x_wide=15
-        y_wide=40
+    elif position_name == 'position*9':
+        x_wide=8
+        y_wide=50
         x_improve=1
         y_improve=-1
-        angel_improve_x=2
-        angel_improve_y=-1
-        angle_init= 0X60
+        angel_improve_x=6
+        angel_improve_y=-5
+        angle_init= 0X50
         fz=30
         x_angel_sign = angle_init#水平角度状态
-    elif position_name == 'position*18':
+    elif position_name == 'position*16':
         x_wide=15
         y_wide=30
-        x_improve=0
+        x_improve=5
         y_improve=0
-        angel_improve_x=0
-        angel_improve_y=1
+        angel_improve_x=7
+        angel_improve_y=-2
         angle_init = 0XA0
+        fz=0
         x_angel_sign = angle_init#水平角度状态
-    elif position_name == 'position*24':
-        x_wide=20
+    elif position_name == 'position*22':
+        x_wide=10
         y_wide=30
-        x_improve=0
+        x_improve=1
         y_improve=-1
-        angel_improve_x=2
-        angel_improve_y=-1
-        angle_init=0X4A
+        angel_improve_x=8
+        angel_improve_y=-2
+        angle_init=0X55
+        fz=0
         x_angel_sign = angle_init#水平角度状态
 
 y_angel_sign = 0x5A#垂直角度状态
@@ -141,7 +150,7 @@ def servo_move_and_fire(result_point_x,result_point_y,target_x,target_y):
             ser.write(bytearray([0xAA, 0xBB, y_servo, y_angel_sign, 0x0D, 0x0A]))
             time.sleep(0.5)
     #开火
-    if  result_point_x-x_wide-fz<= target_x+x_improve <= result_point_x+x_wide + fz and result_point_y-y_wide<= target_y+y_improve <= result_point_y+y_wide:
+    if  result_point_x-x_wide-fz<= target_x+x_improve <= result_point_x+x_wide + fz and result_point_y-y_wide-fz<= target_y+y_improve <= result_point_y+y_wide+fz:
         print("GOOOOOOOOOAL!!!")
         ser.write(bytearray([0xAA, 0xBB, x_servo, x_angel_sign+angel_improve_x,0x0D, 0x0A]))
         time.sleep(0.5)
@@ -150,10 +159,6 @@ def servo_move_and_fire(result_point_x,result_point_y,target_x,target_y):
         ser.write(bytearray([0xAA, 0xBB, fire_servo, fire, 0x0D, 0x0A]))
         time.sleep(0.5)
         ser.write(bytearray([0xAA, 0xBB, fire_servo, close, 0x0D, 0x0A]))
-        time.sleep(1)
-        ser.write(bytearray([0xAA, 0xBB, x_servo,0x5A,0x0D,0x0A]))
-        time.sleep(1)
-        ser.write(bytearray([0xAA, 0xBB, y_servo,0x5A,0x0D,0x0A]))
         time.sleep(1)
         STATION=1
 
@@ -183,7 +188,7 @@ def init():
     return cap, model
 
 def main():
-    global STATION
+    global STATION,count
     if not ser.is_open:
         ser.open()
         print("串口打开成功")#打开串口
@@ -192,13 +197,28 @@ def main():
     servo_init()#初始化舵机
     while True:
         camera,frame=cap.read()#读取摄像头图像
-        frame = cv2.resize(frame, (image_size_x, image_size_y))
+        #frame = cv2.resize(frame, (image_size_x, image_size_y))
         results = model.predict(source=frame, conf=confident,
-                                stream=True,verbose=True,
-                                imgsz=[image_size_x,image_size_y])#识别结果
-        frame=show_result(frame,results)#绘制结果并判定
+                                    stream=True,verbose=True,
+                                    imgsz=[image_size_x,image_size_y])#识别结果
+        show_result(frame,results)#绘制结果并判定
         if STATION == 1:
-            break
+            for i in range(0,5):
+                frame_r = np.zeros_like(frame)
+                camera,frame_r=cap.read()#读取摄像头图像
+                #frame_r = cv2.resize(frame_r, (image_size_x, image_size_y))
+            results_r = model.predict(source=frame_r, conf=confident,
+                                stream=False,verbose=True,
+                                imgsz=[image_size_x,image_size_y],show=True)#识别结果
+            if count<1 and len(results_r[0].boxes.cls) > 0:
+                    return_back
+                    servo_init()
+                    count+=1
+                    STATION=0
+                    continue
+            else:
+                return_back()
+                exit()
 
 if __name__ == '__main__':
     main()

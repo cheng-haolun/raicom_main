@@ -3,8 +3,7 @@ import cv2
 import os
 import sys
 from ultralytics import YOLO
-
-position_id='0'
+from PIL import ImageFont, ImageDraw, Image
 
 def data_init():
     # 定义区
@@ -14,6 +13,16 @@ def data_init():
     save_images = "./BR_look" # 原图保存路径
     return float(confident),int(num),model_path,save_images
 
+def get_chinese_and_save(img,im_path,font_path,font_size,text,position,color):
+
+    try:
+        font = ImageFont.truetype(font_path, font_size, encoding="utf-8")
+    except IOError:
+        raise FileNotFoundError(f"未找到字体文件，请检查路径：{font_path}")
+    draw = ImageDraw.Draw(img)
+    draw.text(position, text, font=font, fill=color)
+    img.save(im_path)
+
 def main():
     global position_id
     confident,num,model_path,save_images=data_init()
@@ -21,11 +30,11 @@ def main():
     position=sys.argv[1]
     if position == 'position*5':
         position_id='D'
-    elif position == 'position*10':
+    elif position == 'position*7':
         position_id='C'
-    elif position == 'position*20':
+    elif position == 'position*22':
         position_id='B'
-    elif position == 'position*30':
+    elif position == 'position*24':
         position_id='A'
     #加载模型
     model = YOLO(f'{model_path}')
@@ -53,18 +62,23 @@ def main():
                 results[0].save(f'{save_images}/{position}/{num}.jpg')
                 for cls in results[0].boxes.cls:
                     if cls == 0:
-                        count_rz += 1
-                    elif cls == 1:
                         count_yj += 1
+                    elif cls == 1:
+                        count_rz += 1
                     elif cls == 2:
                         count_dr += 1
                     elif cls == 3:
                         count_dr += 1
-                im_path = f'{real_save_path}/{position}/{num}.jpg'
-                img = cv2.imread(im_path)
-                cv2.putText(img,f'区域:{position_id}\n人质：{count_rz}友军：{count_yj}敌人：{count_dr}',
-                            (0,0),cv2.FONT_HERSHEY_SIMPLEX,1,(255,0,0),2)
+                im_path = f'{save_images}/{position}/{num}.jpg'
+                font_path="/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"
+                font_size=20
+                position_txt=(0,0)
+                color=(255,0,0)
+                text=f'{position_id}区,人质：{count_rz}人,友军：{count_yj}人,敌人：{count_dr}人'
+                img= Image.open(im_path)
+                get_chinese_and_save(img,im_path,font_path,font_size,text,position_txt,color)
                 num+=1
+            else:
                 break
         else:
             print('未检测到目标')
